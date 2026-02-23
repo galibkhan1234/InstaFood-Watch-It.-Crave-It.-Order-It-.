@@ -1,237 +1,120 @@
 import api from './axios';
 
-// ============================================
-// AUTH API (User Authentication)
-// ============================================
+// Helper to unwrap axios response -> response.data
+const unwrap = (promise) => promise.then((res) => res.data);
 
+/* ================================
+   USER AUTH API
+================================ */
 export const authAPI = {
-  // Register user
-  register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
-  },
-
-  // Login user
-  login: async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
-    return response.data;
-  },
-
-  // Logout user
-  logout: async () => {
-    const response = await api.post('/auth/logout');
-    return response.data;
-  },
-
-  // Get current user (you'll need to add this route to backend)
-  getCurrentUser: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
-  },
+  register: (data) => unwrap(api.post('/api/auth/register', data)),
+  login: (data) => unwrap(api.post('/api/auth/login', data)),
+  logout: () => unwrap(api.post('/api/auth/logout')),
+  me: () => unwrap(api.get('/api/auth/me')),
+  getUserProfile: (userId) => unwrap(api.get(`/api/auth/profile/${userId}`)),
+  updateProfile: (data) => unwrap(api.put('/api/auth/profile', data)),
+  getSavedReels: () => unwrap(api.get('/api/reels/saved')),
 };
 
-// ============================================
-// PARTNER AUTH API (Restaurant Partner)
-// ============================================
-
+/* ================================
+   PARTNER AUTH API
+================================ */
 export const partnerAuthAPI = {
-  // Register food partner
-  register: async (partnerData) => {
-    const response = await api.post('/partner/register', partnerData);
-    return response.data;
-  },
-
-  // Login food partner
-  login: async (credentials) => {
-    const response = await api.post('/partner/login', credentials);
-    return response.data;
-  },
-
-  // Logout partner
-  logout: async () => {
-    const response = await api.post('/partner/logout');
-    return response.data;
-  },
-
-  // Get partner profile
-  getProfile: async () => {
-    const response = await api.get('/partner/profile');
-    return response.data;
-  },
-
-  // Update partner profile
-  updateProfile: async (profileData) => {
-    const response = await api.put('/partner/update', profileData);
-    return response.data;
-  },
+  register: (data) => unwrap(api.post('/api/partner/register', data)),
+  login: (data) => unwrap(api.post('/api/partner/login', data)),
+  logout: () => unwrap(api.post('/api/partner/logout')),
+  profile: () => unwrap(api.get('/api/partner/profile')),
+  update: (data) => unwrap(api.put('/api/partner/update', data)),
+  getStats: () => unwrap(api.get('/api/partner/stats')),
 };
 
-// ============================================
-// REELS API (Food Reels/Posts)
-// ============================================
-
+/* ================================
+   REELS API
+================================ */
 export const reelsAPI = {
-  // Get feed reels (this is your main feed)
-  getFeed: async (page = 1, limit = 10) => {
-    const response = await api.get(`/reels?page=${page}&limit=${limit}`);
-    return response.data;
-  },
+  // Feed
+  getFeed: (page = 1) =>
+    unwrap(api.get(`/api/reels?page=${page}`)),
 
-  // Upload reel (partner only)
-  uploadReel: async (reelData) => {
-    const response = await api.post('/partner/reels', reelData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+  // Upload reel (partner)
+  uploadReel: (formData, onProgress) =>
+    api
+      .post('/api/partner/reels', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (!onProgress) return;
+          const { loaded, total } = progressEvent;
+          const percent = total
+            ? Math.round((loaded * 100) / total)
+            : 0;
+          onProgress(percent);
+        },
+      })
+      .then((res) => res.data),
 
-  // Like/unlike reel
-  likeReel: async (reelId) => {
-    const response = await api.post(`/reels/${reelId}/like`);
-    return response.data;
-  },
+  /* ===== Engagement ===== */
 
-  // Unlike reel (same endpoint toggles)
-  unlikeReel: async (reelId) => {
-    const response = await api.post(`/reels/${reelId}/like`);
-    return response.data;
-  },
+  // Like / Unlike (backend toggle)
+  toggleLike: (reelId) =>
+    unwrap(api.post(`/api/reels/${reelId}/like`)),
 
-  // Increment view count
-  incrementView: async (reelId) => {
-    const response = await api.post(`/reels/${reelId}/view`);
-    return response.data;
-  },
+  // Save / Unsave (backend toggle)
+  saveReel: (reelId) =>
+    unwrap(api.post(`/api/reels/${reelId}/save`)),
 
-  // Add comment
-  addComment: async (reelId, commentData) => {
-    const response = await api.post(`/reels/${reelId}/comments`, commentData);
-    return response.data;
-  },
+  // Share
+  shareReel: (reelId) =>
+    unwrap(api.post(`/api/reels/${reelId}/share`)),
 
-  // Get comments
-  getComments: async (reelId) => {
-    const response = await api.get(`/reels/${reelId}/comments`);
-    return response.data;
-  },
+  // View increment
+  incrementView: (reelId) =>
+    unwrap(api.post(`/api/reels/${reelId}/view`)),
 
-  // Place order from reel
-  placeOrder: async (reelId, orderData) => {
-    const response = await api.post(`/reels/${reelId}/order`, orderData);
-    return response.data;
-  },
+  /* ===== Comments ===== */
 
-  // Redirect to platform (Zomato/Swiggy)
-  redirectToPlatform: async (reelId, platform) => {
-    const response = await api.get(`/reels/${reelId}/order/${platform}`);
-    return response.data;
-  },
+  addComment: (reelId, data) =>
+    unwrap(api.post(`/api/reels/${reelId}/comments`, data)),
+
+  getComments: (reelId) =>
+    unwrap(api.get(`/api/reels/${reelId}/comments`)),
+
+  /* ===== Orders ===== */
+
+  // Track order (POST)
+  placeOrder: (reelId) =>
+    unwrap(api.post(`/api/reels/${reelId}/order`)),
+
+  // Redirect to Zomato / Swiggy (DO NOT unwrap)
+  redirectOrder: (reelId, platform) =>
+    `/api/reels/${reelId}/order/${platform}`,
 };
 
-// ============================================
-// RESTAURANT API
-// ============================================
-
+/* ================================
+   RESTAURANTS
+================================ */
 export const restaurantsAPI = {
-  // Follow/unfollow restaurant
-  toggleFollow: async (restaurantId) => {
-    const response = await api.post(`/restaurants/${restaurantId}/follow`);
-    return response.data;
-  },
-
-  // Get nearby restaurants (you'll need to add this route)
-  getNearby: async (latitude, longitude, maxDistance = 5000) => {
-    const response = await api.get(
-      `/restaurants/nearby?lat=${latitude}&lng=${longitude}&maxDistance=${maxDistance}`
-    );
-    return response.data;
-  },
-
-  // Search restaurants (you'll need to add this route)
-  search: async (query) => {
-    const response = await api.get(`/restaurants/search?q=${query}`);
-    return response.data;
-  },
-
-  // Get restaurant details (you'll need to add this route)
-  getRestaurant: async (restaurantId) => {
-    const response = await api.get(`/restaurants/${restaurantId}`);
-    return response.data;
-  },
-
-  // Get restaurant reels (you'll need to add this route)
-  getRestaurantReels: async (restaurantId, page = 1, limit = 10) => {
-    const response = await api.get(
-      `/restaurants/${restaurantId}/reels?page=${page}&limit=${limit}`
-    );
-    return response.data;
-  },
+  follow: (id) =>
+    unwrap(api.post(`/api/restaurants/${id}/follow`)),
+  getNearby: (lat, lng) =>
+    unwrap(api.get(`/api/restaurants/nearby?lat=${lat}&lng=${lng}`)),
+  search: (query) =>
+    unwrap(api.get(`/api/restaurants/search?q=${encodeURIComponent(query)}`)),
 };
 
-// ============================================
-// USER API
-// ============================================
-
-export const userAPI = {
-  // Get user profile (you'll need to add this route)
-  getProfile: async (userId) => {
-    const response = await api.get(`/users/${userId}`);
-    return response.data;
-  },
-
-  // Update profile (you'll need to add this route)
-  updateProfile: async (userData) => {
-    const response = await api.put('/users/profile', userData);
-    return response.data;
-  },
-
-  // Get saved reels (you'll need to add this route)
-  getSavedReels: async (page = 1, limit = 10) => {
-    const response = await api.get(`/users/saved?page=${page}&limit=${limit}`);
-    return response.data;
-  },
-
-  // Follow user (you'll need to add this route)
-  followUser: async (userId) => {
-    const response = await api.post(`/users/${userId}/follow`);
-    return response.data;
-  },
-
-  // Unfollow user (you'll need to add this route)
-  unfollowUser: async (userId) => {
-    const response = await api.delete(`/users/${userId}/follow`);
-    return response.data;
-  },
-};
-
-// ============================================
-// ALIAS: posts = reels (for compatibility)
-// ============================================
+/* ================================
+   POSTS ALIAS (for old components)
+================================ */
 
 export const postsAPI = {
   getFeed: reelsAPI.getFeed,
-  createPost: reelsAPI.uploadReel,
-  likePost: reelsAPI.likeReel,
-  unlikePost: reelsAPI.unlikeReel,
-  savePost: async (postId) => {
-    // You'll need to add save functionality to backend
-    console.log('Save post not implemented yet');
-    return { success: true };
-  },
-  unsavePost: async (postId) => {
-    // You'll need to add unsave functionality to backend
-    console.log('Unsave post not implemented yet');
-    return { success: true };
-  },
-  sharePost: async (postId) => {
-    // Share functionality (just increment count on frontend for now)
-    return { success: true };
-  },
+  create: reelsAPI.uploadReel,
+  saveReel: reelsAPI.saveReel,
+  likePost: reelsAPI.toggleLike,
+  viewPost: reelsAPI.incrementView,
   addComment: reelsAPI.addComment,
   getComments: reelsAPI.getComments,
+  placeOrder: reelsAPI.placeOrder,
+  redirectOrder: reelsAPI.redirectOrder,
 };
 
-// Export default api instance
 export default api;

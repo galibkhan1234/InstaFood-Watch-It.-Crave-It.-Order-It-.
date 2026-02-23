@@ -6,28 +6,32 @@ export const formatTimeAgo = (date) => {
 };
 
 // Format number with K, M suffixes
-export const formatNumber = (num) => {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K';
-  }
+export const formatNumber = (num = 0) => {
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+  if (num >= 1_000) return (num / 1_000).toFixed(1) + 'K';
   return num.toString();
 };
 
 // Truncate text
-export const truncateText = (text, maxLength) => {
+ export const truncateText = (text = '', maxLength = 100) => {
+  if (!text) return '';
   if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
+  return text.slice(0, maxLength) + '...';
 };
 
+
 // Get initials from name
-export const getInitials = (name) => {
-  const names = name.split(' ');
-  const initials = names.map((n) => n[0]).join('');
-  return initials.substring(0, 2).toUpperCase();
+export const getInitials = (name = '') => {
+  if (!name) return '';
+  return name
+    .trim()
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 };
+
 
 // Validate email
 export const isValidEmail = (email) => {

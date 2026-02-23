@@ -13,130 +13,137 @@ import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Saved from './pages/Saved';
 import Profile from './pages/Profile';
+import RestaurantDetail from './pages/ResturantDetail';
+import NotFound from './pages/NotFound';
+
+// Auth Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import PartnerLogin from './pages/auth/PartnerLogin';
 import PartnerRegister from './pages/auth/PartnerRegister';
-import RestaurantDetail from './pages/ResturantDetail';
-import NotFound from './pages/NotFound';
 
-// Protected Route Component
+// Partner Pages
+import PartnerDashboard from './pages/partner/Dashboard';
+import PartnerUpload from './pages/partner/Upload';
+import PartnerReels from './pages/partner/Reels';
+
+/* =========================
+   Protected Routes
+========================= */
+
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
 
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
+  if (isLoading) return <LoadingScreen />;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  if (user?.userType === 'partner') {
+    return <Navigate to="/partner/dashboard" replace />;
+  }
+
   return children;
 };
 
-// Public Route Component (redirect if already authenticated)
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
+const PartnerProtectedRoute = ({ children }) => {
+  const { isAuthenticated, isLoading, user } = useAuthStore();
 
-  if (isAuthenticated) {
+  if (isLoading) return <LoadingScreen />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/partner/login" replace />;
+  }
+
+  if (user?.userType !== 'partner') {
     return <Navigate to="/" replace />;
   }
 
   return children;
 };
 
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (isAuthenticated) {
+    return user?.userType === 'partner'
+      ? <Navigate to="/partner/dashboard" replace />
+      : <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+/* =========================
+   App
+========================= */
+
 function App() {
   const { fetchUser, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    // Fetch user on app load if token exists
     const token = localStorage.getItem('token');
     if (token && !isAuthenticated) {
       fetchUser();
     }
-  }, []);
+  }, [fetchUser, isAuthenticated]);
 
   return (
     <BrowserRouter>
-      <Toaster
-        position="top-center"
-        reverseOrder={false}
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-            borderRadius: '10px',
-            padding: '16px',
-          },
-          success: {
-            iconTheme: {
-              primary: '#22c55e',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
+      <Toaster position="top-center" />
 
       <Routes>
-        {/* Public Routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <AuthLayout>
-                <Login />
-              </AuthLayout>
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <AuthLayout>
-                <Register />
-              </AuthLayout>
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/partner/login"
-          element={
-            <PublicRoute>
-              <AuthLayout>
-                <PartnerLogin />
-              </AuthLayout>
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/partner/register"
-          element={
-            <PublicRoute>
-              <AuthLayout>
-                <PartnerRegister />
-              </AuthLayout>
-            </PublicRoute>
-          }
-        />
+        {/* Auth Routes */}
+        <Route path="/login" element={
+          <PublicRoute>
+            <AuthLayout><Login /></AuthLayout>
+          </PublicRoute>
+        } />
 
-        {/* Protected Routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
+        <Route path="/register" element={
+          <PublicRoute>
+            <AuthLayout><Register /></AuthLayout>
+          </PublicRoute>
+        } />
+
+        <Route path="/partner/login" element={
+          <PublicRoute>
+            <AuthLayout variant="partner"><PartnerLogin /></AuthLayout>
+          </PublicRoute>
+        } />
+
+        <Route path="/partner/register" element={
+          <PublicRoute>
+            <AuthLayout variant="partner"><PartnerRegister /></AuthLayout>
+          </PublicRoute>
+        } />
+
+        {/* Partner */}
+        <Route path="/partner/dashboard" element={
+          <PartnerProtectedRoute>
+            <PartnerDashboard />
+          </PartnerProtectedRoute>
+        } />
+
+        <Route path="/partner/upload" element={
+          <PartnerProtectedRoute>
+            <PartnerUpload />
+          </PartnerProtectedRoute>
+        } />
+
+        <Route path="/partner/reels" element={
+          <PartnerProtectedRoute>
+            <PartnerReels />
+          </PartnerProtectedRoute>
+        } />
+
+        {/* User */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<Home />} />
           <Route path="explore" element={<Explore />} />
           <Route path="saved" element={<Saved />} />

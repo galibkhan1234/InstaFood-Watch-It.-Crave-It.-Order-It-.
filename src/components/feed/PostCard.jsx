@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Heart,
   MessageCircle,
@@ -8,101 +8,129 @@ import {
   MoreVertical,
   MapPin,
   ExternalLink,
-} from 'lucide-react';
-import Avatar from '../ui/Avatar';
-import { formatTimeAgo, formatNumber } from '../../utils/helpers';
-import { useFeedStore, useAuthStore } from '../../store/useStore';
-import { postsAPI } from '../../api/services';
-import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
+} from "lucide-react";
+import Avatar from "../ui/Avatar";
+import { formatTimeAgo, formatNumber } from "../../utils/helpers";
+import { useFeedStore, useAuthStore } from "../../store/useStore";
+import { postsAPI, reelsAPI } from "../../api/services";
+import toast from "react-hot-toast";
+import { motion } from "framer-motion";
+import CommentSection from "./CommentSection";
 
 const PostCard = ({ post }) => {
   const { user } = useAuthStore();
   const { toggleLike, toggleSave, incrementShareCount } = useFeedStore();
+
   const [showComments, setShowComments] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
-  // ✅ SAFETY CHECK: Return null if post is undefined/null
-  if (!post) {
-    console.error('PostCard: post prop is undefined or null');
-    return null;
-  }
+  if (!post || !post._id) return null;
 
-  // ✅ SAFETY CHECK: Ensure arrays exist with fallback to empty arrays
-  const isLiked = Array.isArray(post.likes) ? post.likes.includes(user?._id) : false;
-  const isSaved = Array.isArray(post.saves) ? post.saves.includes(user?._id) : false;
+  const userId = user?._id;
 
+  const isLiked =
+    Array.isArray(post.likedBy || post.likes) && userId
+      ? (post.likedBy || post.likes || []).includes(userId)
+      : false;
+
+  const isSaved =
+    Array.isArray(post.savedBy || post.saves) && userId
+      ? (post.savedBy || post.saves || []).includes(userId)
+      : false;
+
+  // ----------------------------
+  // LIKE
+  // ----------------------------
   const handleLike = async () => {
-    if (isLiking || !post._id) return;
+    if (!userId) {
+      toast.error("Please login first");
+      return;
+    }
+
+    if (isLiking) return;
     setIsLiking(true);
 
     try {
-      if (isLiked) {
-        await postsAPI.unlikePost(post._id);
-      } else {
-        await postsAPI.likePost(post._id);
-      }
-      toggleLike(post._id, user._id);
+      // Optimistic update
+      toggleLike(post._id, userId);
+
+      await postsAPI.likePost(post._id);
     } catch (error) {
-      console.error('Like error:', error);
-      toast.error('Failed to like post');
+      // rollback
+      toggleLike(post._id, userId);
+      toast.error("Failed to update like");
     } finally {
       setIsLiking(false);
     }
   };
 
+  // ----------------------------
+  // SAVE
+  // ----------------------------
   const handleSave = async () => {
-    if (isSaving || !post._id) return;
+    if (!userId) {
+      toast.error("Please login first");
+      return;
+    }
+
+    if (isSaving) return;
     setIsSaving(true);
 
     try {
-      if (isSaved) {
-        await postsAPI.unsavePost(post._id);
-        toast.success('Removed from saved');
-      } else {
-        await postsAPI.savePost(post._id);
-        toast.success('Added to saved');
-      }
-      toggleSave(post._id, user._id);
+      toggleSave(post._id, userId);
+      await reelsAPI.saveReel(post._id);
+      toast.success(isSaved ? "Removed from saved" : "Saved!");
     } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save post');
+      toggleSave(post._id, userId); // rollback
+      toast.error("Failed to save post");
     } finally {
       setIsSaving(false);
     }
   };
 
+  // ----------------------------
+  // SHARE
+  // ----------------------------
   const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+
     try {
       const shareUrl = `${window.location.origin}/post/${post._id}`;
-      
+
       if (navigator.share) {
         await navigator.share({
-          title: `Check out this food from ${post.restaurant?.name || 'a restaurant'}`,
-          text: post.caption || 'Amazing food!',
+          title: post.restaurant?.name || "Food Post",
+          text: post.caption || "",
           url: shareUrl,
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        toast.success('Link copied to clipboard!');
+        toast.success("Link copied to clipboard!");
       }
-      
-      if (post._id) {
-        await postsAPI.sharePost(post._id);
-        incrementShareCount(post._id);
-      }
+
+      incrementShareCount(post._id);
+      reelsAPI.shareReel(post._id).catch(() => {});
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Share error:', error);
-        toast.error('Failed to share');
+      if (error.name !== "AbortError") {
+        toast.error("Failed to share");
       }
+    } finally {
+      setIsSharing(false);
     }
   };
 
+  // ----------------------------
+  // ORDER
+  // ----------------------------
   const handleOrderNow = () => {
-    toast.success('Redirecting to delivery platform...');
-    // window.open('https://www.zomato.com/', '_blank');
+    const orderUrl =
+      post.restaurant?.orderUrl ||
+      "https://www.zomato.com/";
+
+    window.open(orderUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -111,139 +139,111 @@ const PostCard = ({ post }) => {
       animate={{ opacity: 1, y: 0 }}
       className="card overflow-hidden mb-6"
     >
-      {/* Header */}
+      {/* HEADER */}
       <div className="p-4 flex items-center justify-between">
         <Link
-          to={`/restaurant/${post.restaurant?._id || '#'}`}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          to={`/restaurant/${post.restaurant?._id || "#"}`}
+          className="flex items-center gap-3"
         >
           <Avatar
             src={post.restaurant?.image}
-            name={post.restaurant?.name || 'Restaurant'}
+            name={post.restaurant?.name || "Restaurant"}
             size="md"
           />
           <div>
-            <h3 className="font-semibold text-gray-900">
-              {post.restaurant?.name || 'Restaurant Name'}
-            </h3>
-            {post.restaurant?.location?.city && (
+            <h3 className="font-semibold">          {post.restaurant?.restaurantName || post.restaurant?.name}
+        </h3>
+            {post.restaurant?.address?.city && (
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <MapPin className="w-3 h-3" />
-                <span>{post.restaurant.location.city}</span>
+                {post.restaurant.address.city}
               </div>
             )}
           </div>
         </Link>
-        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <MoreVertical className="w-5 h-5 text-gray-600" />
-        </button>
+
+        <MoreVertical className="w-5 h-5 text-gray-600" />
       </div>
 
-      {/* Image */}
-      <div className="relative aspect-square bg-gray-100">
+      {/* IMAGE */}
+      <div className="aspect-square bg-gray-100">
         <img
-          src={post.image || 'https://via.placeholder.com/600x600?text=Food+Image'}
-          alt={post.caption || 'Food post'}
+          src={post.image}
+          alt="post"
           className="w-full h-full object-cover"
-          loading="lazy"
-          onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/600x600?text=Food+Image';
-          }}
         />
-        
-        {/* Cuisine Tag */}
-        {post.cuisine && (
-          <div className="absolute top-3 left-3">
-            <span className="badge bg-white/90 backdrop-blur-sm text-gray-900 shadow-md">
-              {post.cuisine}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Actions */}
+      {/* ACTIONS */}
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleLike}
-              disabled={isLiking}
-              className="group relative"
-            >
+          <div className="flex gap-4">
+            <button onClick={handleLike}>
               <Heart
-                className={`w-7 h-7 transition-all ${
+                className={`w-7 h-7 ${
                   isLiked
-                    ? 'fill-red-500 stroke-red-500'
-                    : 'stroke-gray-700 group-hover:scale-110'
+                    ? "fill-red-500 stroke-red-500"
+                    : "stroke-gray-700"
                 }`}
               />
             </button>
-            <button
-              onClick={() => setShowComments(!showComments)}
-              className="hover:scale-110 transition-transform"
-            >
+
+            <button onClick={() => setShowComments((p) => !p)}>
               <MessageCircle className="w-7 h-7 stroke-gray-700" />
             </button>
-            <button
-              onClick={handleShare}
-              className="hover:scale-110 transition-transform"
-            >
+
+            <button onClick={handleShare}>
               <Share2 className="w-7 h-7 stroke-gray-700" />
             </button>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="hover:scale-110 transition-transform"
-          >
+
+          <button onClick={handleSave}>
             <Bookmark
               className={`w-7 h-7 ${
                 isSaved
-                  ? 'fill-gray-900 stroke-gray-900'
-                  : 'stroke-gray-700'
+                  ? "fill-black stroke-black"
+                  : "stroke-gray-700"
               }`}
             />
           </button>
         </div>
 
-        {/* Likes Count */}
-        <div className="mb-2">
-          <button className="font-semibold text-gray-900 text-sm">
-            {formatNumber(post.likesCount || 0)} likes
-          </button>
+        {/* COUNTS */}
+        <div className="text-sm font-semibold mb-2">
+          {formatNumber(
+            post.likes?.length ?? post.likesCount ?? 0
+          )}{" "}
+          likes
         </div>
 
-        {/* Caption */}
+        {/* CAPTION */}
         {post.caption && (
-          <div className="mb-2">
-            <Link
-              to={`/restaurant/${post.restaurant?._id || '#'}`}
-              className="font-semibold text-gray-900 mr-2"
-            >
-              {post.restaurant?.name || 'Restaurant'}
-            </Link>
-            <span className="text-gray-700">{post.caption}</span>
-          </div>
+          <p className="text-sm mb-2">
+            <span className="font-semibold mr-2">
+              {post.restaurant?.restaurantName || post.restaurant?.name}
+            </span>
+            {post.caption}
+          </p>
         )}
 
-        {/* View Comments */}
+        {/* COMMENTS */}
         {post.commentsCount > 0 && (
           <button
-            onClick={() => setShowComments(!showComments)}
-            className="text-gray-500 text-sm mb-2"
+            onClick={() => setShowComments((p) => !p)}
+            className="text-sm text-gray-500 mb-2"
           >
             View all {post.commentsCount} comments
           </button>
         )}
 
-        {/* Time */}
+        {/* TIME */}
         {post.createdAt && (
-          <time className="text-xs text-gray-500 uppercase block mb-4">
+          <div className="text-xs text-gray-400 mb-4">
             {formatTimeAgo(post.createdAt)}
-          </time>
+          </div>
         )}
 
-        {/* Order Now Button */}
+        {/* ORDER BUTTON */}
         <button
           onClick={handleOrderNow}
           className="w-full btn-primary flex items-center justify-center gap-2"
@@ -253,10 +253,10 @@ const PostCard = ({ post }) => {
         </button>
       </div>
 
-      {/* Comments Section (if expanded) */}
+      {/* COMMENT SECTION */}
       {showComments && (
-        <div className="border-t border-gray-200 p-4">
-          <p className="text-gray-500 text-sm">Comments coming soon...</p>
+        <div className="border-t">
+          <CommentSection postId={post._id} />
         </div>
       )}
     </motion.article>

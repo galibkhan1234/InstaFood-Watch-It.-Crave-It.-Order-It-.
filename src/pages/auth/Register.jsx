@@ -1,238 +1,86 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import { useAuthStore } from '../../store/useStore';
-import toast from 'react-hot-toast';
-import { isValidEmail, isValidPhone } from '../../utils/helpers';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { useAuthStore } from "../../store/useStore";
+import toast from "react-hot-toast";
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuthStore();
+
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    } else if (formData.fullName.trim().length < 2) {
-      newErrors.fullName = 'Name must be at least 2 characters';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!isValidEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!isValidPhone(formData.phone)) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validate()) return;
-
-    setIsLoading(true);
-
+    setLoading(true);
     try {
-      const { confirmPassword, ...registerData } = formData;
-      await register(registerData);
-      toast.success('Account created successfully!');
-      navigate('/');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      await register(form);
+      toast.success("Account created successfully!");
+      navigate("/");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Registration failed");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <div>
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Create Account
-        </h2>
-        <p className="text-gray-600">Join InstaFood today</p>
+      <div className="mb-6">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Create Account</h2>
+        <p className="text-sm md:text-base text-gray-600">Start your delicious journey today</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Full Name"
-          type="text"
-          name="fullName"
-          value={formData.fullName}
-          onChange={handleChange}
-          error={errors.fullName}
-          placeholder="Enter your full name"
-          leftIcon={<User className="w-5 h-5 text-gray-400" />}
-          required
-          autoFocus
-        />
-
-        <Input
-          label="Email"
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          placeholder="Enter your email"
-          leftIcon={<Mail className="w-5 h-5 text-gray-400" />}
-          required
-        />
-
-        <Input
-          label="Phone Number"
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          error={errors.phone}
-          placeholder="10-digit phone number"
-          leftIcon={<Phone className="w-5 h-5 text-gray-400" />}
-          required
-          maxLength={10}
-        />
-
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          placeholder="Create a password"
-          leftIcon={<Lock className="w-5 h-5 text-gray-400" />}
-          rightIcon={
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="cursor-pointer"
-            >
-              {showPassword ? (
-                <EyeOff className="w-5 h-5 text-gray-400" />
-              ) : (
-                <Eye className="w-5 h-5 text-gray-400" />
-              )}
-            </button>
-          }
-          required
-        />
-
-        <Input
-          label="Confirm Password"
-          type={showPassword ? 'text' : 'password'}
-          name="confirmPassword"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={errors.confirmPassword}
-          placeholder="Confirm your password"
-          leftIcon={<Lock className="w-5 h-5 text-gray-400" />}
-          required
-        />
-
-        <div className="pt-2">
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              className="w-4 h-4 mt-1 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-              required
-            />
-            <span className="text-sm text-gray-700">
-              I agree to the{' '}
-              <Link
-                to="/terms"
-                className="text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link
-                to="/privacy"
-                className="text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Privacy Policy
-              </Link>
-            </span>
-          </label>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <User className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+            </div>
+            <input type="text" name="fullName" value={form.fullName} onChange={handleChange} placeholder="John Doe" required className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all text-gray-900 placeholder-gray-400" />
+          </div>
         </div>
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          fullWidth
-          isLoading={isLoading}
-          className='bg-green-600'
-        >
-          Create Account
-        </Button>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+            </div>
+            <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="you@example.com" required className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all text-gray-900 placeholder-gray-400" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+            </div>
+            <input type={showPassword ? "text" : "password"} name="password" value={form.password} onChange={handleChange} placeholder="Create a strong password" required className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all text-gray-900 placeholder-gray-400" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">Must be at least 8 characters</p>
+        </div>
+
+        <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2">{loading ? <><svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/></svg><span>Creating account...</span></> : <><span>Create Account</span><ArrowRight className="h-5 w-5" /></>}</button>
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          Already have an account?{' '}
-          <Link
-            to="/login"
-            className="text-primary-600 hover:text-primary-700 font-semibold"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+      <p className="text-center text-xs text-gray-500 mt-5">By creating an account, you agree to our <Link to="/terms" className="text-emerald-600 hover:text-emerald-700 underline">Terms</Link> and <Link to="/privacy" className="text-emerald-600 hover:text-emerald-700 underline">Privacy Policy</Link></p>
 
-      <div className="mt-4 text-center">
-        <Link
-          to="/partner/register"
-          className="text-sm text-gray-600 hover:text-gray-900"
-        >
-          Want to register as a restaurant?{' '}
-          <span className="text-primary-600 font-semibold">
-            Register here
-          </span>
-        </Link>
-      </div>
+      <div className="relative my-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div><div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-gray-500">Already have an account?</span></div></div>
+
+      <Link to="/login" className="block w-full py-3.5 text-center bg-gray-50 hover:bg-gray-100 text-gray-900 font-semibold rounded-xl border-2 border-gray-200 transition-colors">Sign In</Link>
+
+      <div className="mt-6 pt-6 border-t border-gray-100"><p className="text-center text-sm text-gray-600">Want to list your restaurant? <Link to="/partner/register" className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors inline-flex items-center gap-1">Register as Partner <ArrowRight className="h-3.5 w-3.5" /></Link></p></div>
     </div>
   );
 };
-
-export default Register;

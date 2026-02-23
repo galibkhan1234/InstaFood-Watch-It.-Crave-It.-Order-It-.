@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import PostCard from '../components/feed/PostCard';
 import { Spinner } from '../components/ui/Spinner';
-import { userAPI } from '../api/services';
+import { authAPI } from '../api/services';
 import toast from 'react-hot-toast';
 import { Bookmark } from 'lucide-react';
 
@@ -15,8 +15,8 @@ const Saved = () => {
 
   const fetchSavedPosts = async () => {
     try {
-      const data = await userAPI.getSavedPosts();
-      setPosts(data.posts);
+      const data = await authAPI.getSavedReels(); // fixed
+      setPosts(data.reels || []);
     } catch (error) {
       toast.error('Failed to load saved posts');
     } finally {
@@ -34,15 +34,15 @@ const Saved = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <Bookmark className="w-8 h-8 text-primary-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Saved Posts</h1>
-            <p className="text-gray-600">
-              {posts.length} {posts.length === 1 ? 'post' : 'posts'} saved
-            </p>
-          </div>
+      <div className="mb-6 flex items-center gap-3">
+        <Bookmark className="w-8 h-8 text-primary-600" />
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Saved Reels
+          </h1>
+          <p className="text-gray-600">
+            {posts.length} {posts.length === 1 ? 'reel' : 'reels'} saved
+          </p>
         </div>
       </div>
 
@@ -50,18 +50,16 @@ const Saved = () => {
         <div className="card p-12 text-center">
           <div className="text-6xl mb-4">📌</div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            No saved posts yet
+            No saved reels yet
           </h3>
           <p className="text-gray-600">
-            Save posts to view them later. They'll appear here!
+            Save reels to view them later.
           </p>
         </div>
       ) : (
-        <div>
-          {posts.map((post) => (
-            <PostCard key={post._id} post={post} />
-          ))}
-        </div>
+        posts.map((post) => (
+          <PostCard key={post._id} post={post} />
+        ))
       )}
     </div>
   );
